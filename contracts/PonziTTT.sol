@@ -6,6 +6,9 @@ contract PonziTTT {
     // ================== Owner list ====================
     // list of owners
     address[256] owners;
+    // list of trainees;
+    address[] trainees;
+    address[] traineesShouldRefund;
     // required lessons
     uint256 required;
     // index on the list of owners to allow reverse lookup
@@ -26,6 +29,9 @@ contract PonziTTT {
     event Confirmation(address _from, address _to, uint256 _lesson);
     // Funds has refund back (record how much).
     event Refund(address _from, address _to, uint256 _amount);
+    event FallbackLog(address _from, uint256 _amount);
+    event AutoRefundTrainee(address _from, address[] _refund_list, uint256 _amount);
+
 
     modifier onlyOwner {
         require(isOwner(msg.sender));
@@ -64,9 +70,16 @@ contract PonziTTT {
         }
     }
 
+    function() payable notTrainee {
+        require(msg.value == 2 ether);
+        traineeBalances[msg.sender] = msg.value;
+        FallbackLog(msg.sender, msg.value);
+    }
+
     function register() payable notTrainee {
         require(msg.value == 2 ether);
         traineeBalances[msg.sender] = msg.value;
+        trainees.push(msg.sender);
         Registration(msg.sender, msg.value);
     }
 
@@ -102,6 +115,32 @@ contract PonziTTT {
         _recipient.transfer(traineeBalances[_recipient]);
         Refund(msg.sender, _recipient, traineeBalances[_recipient]);
         traineeBalances[_recipient] = 0;
+    }
+
+    function autoRefund() onlyOwner {
+        // address[256] traineesShouldRefund;
+        uint256 totalBalance = this.balance;
+        uint256 averageBalance;
+
+        for(uint256 index = 0; index < trainees.length; index++){
+            address trainee = trainees[index];
+            if(isFinished(trainee)){
+                traineesShouldRefund.push(trainee);
+            }
+        }
+
+
+        if(traineesShouldRefund.length > 0) {
+            averageBalance = totalBalance / (traineesShouldRefund.length);
+
+            for(uint256 i = 0; i < traineesShouldRefund.length; i++){
+                address traineeRefund = traineesShouldRefund[i];
+                traineeRefund.transfer(averageBalance);
+                traineeBalances[traineeRefund] = 0;
+            }
+
+            AutoRefundTrainee(msg.sender, traineesShouldRefund, averageBalance);
+        }
     }
 
     function destroy() onlyOwner {
