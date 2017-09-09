@@ -167,6 +167,7 @@ contract('PonziTTT', function(accounts) {
         }).then(function(res) {
             assert.equal(res.valueOf(), true, "");
         }).then(function() {
+            ponzi.setEndBlock(0, {from: trainer});
             return ponzi.autoRefund({from: trainer});
         }).then(function() {
             after = web3.eth.getBalance(trainee);
@@ -241,6 +242,7 @@ contract('PonziTTT', function(accounts) {
         }).then(function(res){
             assert.equal(res.valueOf(), 0, "");
         }).then(function() {
+            ponzi.setEndBlock(-1, {from: trainer});
             return ponzi.autoRefund({from: trainer});
         }).then(function() {
             after = web3.eth.getBalance(trainee);
